@@ -37,7 +37,7 @@ local blur                   = require("scripts.ErnGlider.blurshader")
 local chimgates              = require("scripts.ErnGlider.chimgates")
 
 -- multiply finished speed by this amount
-local speedFactor            = 0.7
+local speedFactor            = 1
 -- initial momentum when starting surf
 local startMomentum          = 0.2
 -- downward slope bonus factor
@@ -123,9 +123,9 @@ local sounds         = {
 
 local shieldBone     = "Bip01 Shieldsurf" --Bip01 Shieldsurf
 local surfAnimations = {
-    forward = "shieldgo",                 --"Shieldgo",
-    left = "sneakleft",
-    right = "sneakright",
+    forward = "shieldgo",                 --"shieldgo", -- shieldgrab1
+    left = "shieldl",
+    right = "shieldr",
     jump = "sneakforward"
 }
 
@@ -310,9 +310,10 @@ local function removeSurf(wipeout)
     persist.landed = false
     persist.activeShield = nil
     persist.activeShieldRecord = nil
+    persist.momentum = 0
+    persist.driftMomentum = 0
     print("Removing surf...")
     -- reset movement
-    persist.sideMovement = 0
     pself.controls.movement = 0
     -- todo: this will probably be bad
     pself.controls.run = false
@@ -484,7 +485,16 @@ local fullAnimationOptions = {
     loops = -1,
     speed = 1,
 }
-local function animate()
+local leftRightAnimationOptions = {
+    priority = animation.PRIORITY.Hit,
+    --blendMask = util.bitOr(animation.BLEND_MASK.LeftArm, animation.BLEND_MASK.RightArm),
+    --blendMask = animation.BLEND_MASK.LowerBody,
+    loops = -1,
+    speed = 1,
+}
+
+local function animate(movement, sideMovement)
+    --print("animate movement:" .. tostring(movement) .. " sideMovement:" .. tostring(sideMovement))
     -- cancel run anims so the footstep sounds stop
     animation.cancel(pself, "runforward")
     animation.cancel(pself, "runleft")
@@ -501,32 +511,43 @@ local function animate()
     end
 
     local armAnim = animation.getActiveGroup(pself, animation.BONE_GROUP.LeftArm)
-    if surfAnimations.left and (pself.controls.sideMovement <= -1 * settings.main.deadzone) and surfAnimations.left ~= armAnim then
+    if surfAnimations.left and (sideMovement <= -1 * settings.main.deadzone) and surfAnimations.left ~= armAnim then
         animation.cancel(pself, surfAnimations.right)
         animation.cancel(pself, surfAnimations.jump)
-        if not animation.isPlaying(pself, surfAnimations.left) then
+        leftRightAnimationOptions.speed = surfSpeed() * math.abs(sideMovement)
+        if animation.isPlaying(pself, surfAnimations.left) then
+            animation.setSpeed(pself, surfAnimations.left, leftRightAnimationOptions.speed)
+        else
             settings.debugPrint("anim start left - " .. surfAnimations.left)
-            animation.playBlended(pself, surfAnimations.left, armsAnimationOptions)
+            animation.playBlended(pself, surfAnimations.left, leftRightAnimationOptions)
         end
-    elseif surfAnimations.right and (pself.controls.sideMovement >= settings.main.deadzone) and surfAnimations.right ~= armAnim then
+    elseif surfAnimations.right and (sideMovement >= settings.main.deadzone) and surfAnimations.right ~= armAnim then
         animation.cancel(pself, surfAnimations.left)
         animation.cancel(pself, surfAnimations.jump)
-        if not animation.isPlaying(pself, surfAnimations.right) then
+        leftRightAnimationOptions.speed = surfSpeed() * math.abs(sideMovement)
+        if animation.isPlaying(pself, surfAnimations.right) then
+            animation.setSpeed(pself, surfAnimations.right, leftRightAnimationOptions.speed)
+        else
             settings.debugPrint("anim start right - " .. surfAnimations.right)
-            animation.playBlended(pself, surfAnimations.right, armsAnimationOptions)
+            animation.playBlended(pself, surfAnimations.right, leftRightAnimationOptions)
         end
-    elseif (math.abs(pself.controls.sideMovement) < settings.main.deadzone) then
+    elseif (math.abs(sideMovement) < settings.main.deadzone) then
         if surfAnimations.left then animation.cancel(pself, surfAnimations.left) end
         if surfAnimations.right then animation.cancel(pself, surfAnimations.right) end
         if surfAnimations.jump then animation.cancel(pself, surfAnimations.jump) end
     end
 
     -- always play forward
-    if not animation.isPlaying(pself, surfAnimations.forward) then
-        settings.debugPrint("anim start forward - " .. surfAnimations.forward)
+    fullAnimationOptions.speed = surfSpeed() * movement
+    if animation.isPlaying(pself, surfAnimations.forward) then
+        --settings.debugPrint("anim forward - " .. surfAnimations.forward .. " " ..
+        --    tostring(fullAnimationOptions.speed))
+        animation.setSpeed(pself, surfAnimations.forward, fullAnimationOptions.speed)
+    else
+        settings.debugPrint("anim start forward - " ..
+            surfAnimations.forward .. " " .. tostring(fullAnimationOptions.speed))
         --animation.clearAnimationQueue(pself, false)
         --animation.playQueued(pself, surfAnimations.forward)
-        fullAnimationOptions.speed = surfSpeed()
         animation.playBlended(pself,
             surfAnimations.forward,
             fullAnimationOptions)
@@ -651,8 +672,6 @@ local function onUpdate(dt)
 
         -- update gravel sound
         slideSound()
-        -- handle animations
-        animate()
 
         -- roll over foot positions
         persist.lastFootPos = persist.currentFootPos
@@ -663,14 +682,18 @@ local function onUpdate(dt)
 
         local facingVec3 = pself.rotation:apply(forward):normalize()
         local facingVec2 = util.vector2(facingVec3.x, facingVec3.y)
-        local travelDot = facingVec2:dot(footTravelVec:normalize())
+        local travelDot = 0
+        local xyDist = footTravelVec:length()
+        if xyDist > 0 then
+            travelDot = facingVec2:dot(footTravelVec:normalize())
+        end
         --[[print("facing (" .. string.format("%.2f", facingVec2.x) .. ", " .. string.format("%.2f", facingVec2.y) .. ")" ..
             "foot (" ..
             string.format("%.2f", footTravelVec.x) .. ", " .. string.format("%.2f", footTravelVec.y) .. ")" ..
             "dot (" .. string.format("%.2f", travelDot) .. ")")]]
-        local xyDist = footTravelVec:length()
 
-        if travelDot < 0 and types.Actor.isOnGround(pself) then
+
+        if (travelDot < 0 and types.Actor.isOnGround(pself)) or xyDist == 0 then
             -- we are moving backwards!
             -- keep slope neutral since we might be bouncing against a wall.
             -- friction or min speed kickout will eventually exit surf
@@ -816,11 +839,25 @@ local function onFrame(dt)
             math.abs(persist.driftMomentum) * util.clamp((1 - persist.activeShieldRecord.weightFactor / 2), 0.5, 1) *
             driftPenalty, 0, 1)
 
-        persist.sideMovement = persist.driftMomentum
+        --persist.sideMovement = persist.driftMomentum
         --settings.debugPrint("sidemovement: " .. tostring(persist.sideMovement))
-        pself.controls.sideMovement = persist.sideMovement
-        pself.controls.movement = util.clamp(persist.momentum - math.abs(persist.sideMovement), 0, 1)
+        pself.controls.sideMovement = 0
+        pself.controls.movement = 0
         pself.controls.run = true
+
+
+        -- handle animations
+        animate(
+            util.clamp(persist.momentum - math.abs(persist.driftMomentum), 0, 1),
+            persist.driftMomentum
+        )
+
+        -- TODO: only override movement while on ground?
+        -- check if this is needed
+        if types.Actor.isOnGround(pself) then
+            pself.controls.movement = 0
+            pself.controls.sideMovement = 0
+        end
     end
 end
 
