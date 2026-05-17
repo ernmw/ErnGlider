@@ -23,6 +23,10 @@ local interfaces = require("openmw.interfaces")
 local function init()
     input.registerTriggerHandler(settings.toggleGlideTriggerKey, async:callback(
         function()
+            if settings.main.enableJumpControl then
+                return
+            end
+
             if interfaces.ErnGliderGlider.isApplied() then
                 interfaces.ErnGliderGlider.remove()
             else
@@ -33,6 +37,10 @@ local function init()
 
     input.registerTriggerHandler(settings.toggleSurfTriggerKey, async:callback(
         function()
+            if settings.main.enableJumpControl then
+                return
+            end
+
             if interfaces.ErnGliderSurf.isApplied() then
                 interfaces.ErnGliderSurf.remove()
             else
