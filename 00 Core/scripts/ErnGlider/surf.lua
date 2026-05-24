@@ -576,11 +576,11 @@ local function onUpdate(dt)
             removeSurf()
         end
 
-        -- if persist.landed and (persist.momentum <= kickoutMinimumMomentum) then
-        --     settings.debugPrint("out of momentum")
-        --     removeSurf()
-        --     return
-        -- end
+        if persist.landed and (persist.momentum <= kickoutMinimumMomentum) then
+            settings.debugPrint("out of momentum")
+            removeSurf()
+            return
+        end
 
         local justLanded = false
         local justJumped = false

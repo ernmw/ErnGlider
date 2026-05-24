@@ -51,9 +51,10 @@ local persist            = {
     sideMovement = 0,
 }
 
-local vfxState = "hidden"
-local vfxTimer = 0
-local lastCameraMode = nil
+-- This handles re-applying the glider vfx during camera changes
+local vfxState           = "hidden"
+local vfxTimer           = 0
+local lastCameraMode     = nil
 
 if settings.glider.enableQuest then
     pself.type.addTopic(pself, "glider")
@@ -493,7 +494,7 @@ local function onFrame()
     if persist.applied then
         pself.controls.movement = 1
         local startingYaw = pself.controls.yawChange
-        if math.abs(startingYaw) < 0.01 then
+        if math.abs(startingYaw) < 0.05 then
             startingYaw = 0
         end
         persist.sideMovement = util.clamp((persist.sideMovement + startingYaw * driftFactor) * driftDecay, -1, 1)
