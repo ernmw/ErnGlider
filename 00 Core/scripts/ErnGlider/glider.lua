@@ -51,6 +51,10 @@ local persist            = {
     sideMovement = 0,
 }
 
+local vfxState = "hidden"
+local vfxTimer = 0
+local lastCameraMode = nil
+
 if settings.glider.enableQuest then
     pself.type.addTopic(pself, "glider")
 end
@@ -123,7 +127,6 @@ local sounds = {
 
 local function applyGlideSpell(currentGlider)
     local spell = glideSpells[currentGlider]
-    local vfx = glideranim[currentGlider].model
     pself.type.activeSpells(pself):add({
         id = spell,
         effects = { 0, 1 },
@@ -131,10 +134,6 @@ local function applyGlideSpell(currentGlider)
         ignoreSpellAbsorption = true,
         ignoreReflect = true
     })
-    if vfx and camera.getMode() == camera.MODE.ThirdPerson then
-        animation.addVfx(pself, vfx,
-            { loop = true, boneName = glideranim[cachedCurrentGlider].bone, vfxId = "glider", useAmbientLight = false })
-    end
 end
 
 local forward = util.vector3(0.0, 1.0, 0.0)
@@ -263,8 +262,9 @@ local function removeGlider()
             pself.type.activeSpells(pself):remove(spell.activeSpellId)
         end
     end
-    -- remove vfx
-    animation.removeVfx(pself, "glider")
+    -- remove vfx (с защитой pcall)
+    pcall(function() animation.removeVfx(pself, "glider") end)
+    vfxState = "hidden"
     -- remove sound
     core.sound.stopSoundFile3d(sounds.wind, pself)
     -- remove all possible glider anims
@@ -402,6 +402,14 @@ local function onUpdate(dt)
             removeGlider()
             return
         end
+
+        local currentMode = camera.getMode()
+        if lastCameraMode ~= nil and lastCameraMode ~= currentMode then
+            persist.sideMovement = 0
+            pself.controls.yawChange = 0
+        end
+        lastCameraMode = currentMode
+
         -- only remove whole units of fatigue
         fatigueDebt = fatigueDebt + (naturalFatigueRegenRate() + settings.glider.fatigueCost) * dt
         if fatigueDebt > 1 then
@@ -449,6 +457,35 @@ local function onUpdate(dt)
         else
             updraftShaderInst:setEnabled(false)
         end
+
+        -- Управление видимостью планера при смене камеры (с защитой pcall)
+        if currentMode == camera.MODE.FirstPerson then
+            if vfxState ~= "hidden" then
+                pcall(function() animation.removeVfx(pself, "glider") end)
+                vfxState = "hidden"
+            end
+        else
+            if vfxState == "hidden" then
+                vfxState = "waiting_to_show"
+                vfxTimer = 0.11 -- Уменьшенная микро-пауза (110 мс)
+            elseif vfxState == "waiting_to_show" then
+                vfxTimer = vfxTimer - dt
+                if vfxTimer <= 0 then
+                    local cg = getCurrentGlider()
+                    if cg and glideranim[cg] then
+                        pcall(function()
+                            animation.addVfx(pself, glideranim[cg].model, {
+                                loop = true,
+                                boneName = glideranim[cg].bone,
+                                vfxId = "glider",
+                                useAmbientLight = false
+                            })
+                        end)
+                        vfxState = "shown"
+                    end
+                end
+            end
+        end
     end
 end
 
@@ -456,7 +493,7 @@ local function onFrame()
     if persist.applied then
         pself.controls.movement = 1
         local startingYaw = pself.controls.yawChange
-        if math.abs(startingYaw) < 0.05 then
+        if math.abs(startingYaw) < 0.01 then
             startingYaw = 0
         end
         persist.sideMovement = util.clamp((persist.sideMovement + startingYaw * driftFactor) * driftDecay, -1, 1)

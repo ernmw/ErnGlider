@@ -136,13 +136,13 @@ local function init()
                 }
             },
             {
-                key = "k_" .. toggleGlideTriggerKey,
-                renderer = 'inputBinding',
+                key = "glideKeyBinding",
+                renderer = "inputBinding",
                 name = "GlideKeyName",
-                default = 'None10',
+                default = "i",
                 argument = {
                     key = toggleGlideTriggerKey,
-                    type = 'trigger',
+                    type = "trigger",
                 }
             },
         }
@@ -196,13 +196,13 @@ local function init()
                 renderer = "checkbox",
             },
             {
-                key = "k_" .. toggleSurfTriggerKey,
-                renderer = 'inputBinding',
+                key = "surfKeyBinding",
+                renderer = "inputBinding",
                 name = "SurfKeyName",
-                default = 'None10',
+                default = "u",
                 argument = {
                     key = toggleSurfTriggerKey,
-                    type = 'trigger',
+                    type = "trigger",
                 }
             },
         }

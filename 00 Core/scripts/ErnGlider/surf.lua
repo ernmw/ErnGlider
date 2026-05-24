@@ -168,7 +168,7 @@ local function getShield()
 end
 
 local function applyVFX()
-    if camera.getMode() == camera.MODE.ThirdPerson then
+    if camera.getMode() ~= camera.MODE.FirstPerson then
         local shieldModel = persist.activeShieldRecord.model
         animation.addVfx(pself, shieldModel,
             { loop = true, boneName = shieldBone, vfxId = "surf", useAmbientLight = false })
@@ -576,11 +576,11 @@ local function onUpdate(dt)
             removeSurf()
         end
 
-        if persist.landed and (persist.momentum <= kickoutMinimumMomentum) then
-            settings.debugPrint("out of momentum")
-            removeSurf()
-            return
-        end
+        -- if persist.landed and (persist.momentum <= kickoutMinimumMomentum) then
+        --     settings.debugPrint("out of momentum")
+        --     removeSurf()
+        --     return
+        -- end
 
         local justLanded = false
         local justJumped = false
