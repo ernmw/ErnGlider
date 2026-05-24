@@ -63,7 +63,7 @@ Speed and Athletics contribute to your overall surfing speed.
 
 ## Credits
 
-Erin coded this, but this wouldn't have been possible without the help of a lot of people. Special thanks to Dubious, Semaro, SahJop, Greatness7, S3ctor, and the rest of the OpenMW modding community.
+Erin coded this, but this wouldn't have been possible without the help of a lot of people. Special thanks to Dubious, Semaro, SahJop, Greatness7, S3ctor, Sergey Rudyi, and the rest of the OpenMW modding community.
 
 ### Sounds
 
