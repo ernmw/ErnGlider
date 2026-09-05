@@ -23,7 +23,7 @@ local interfaces = require("openmw.interfaces")
 local function init()
     input.registerTriggerHandler(settings.toggleGlideTriggerKey, async:callback(
         function()
-            if settings.main.enableJumpControl then
+            if settings.main.enableJumpControl or (#interfaces.UI.modes ~= 0) then
                 return
             end
 
@@ -37,7 +37,7 @@ local function init()
 
     input.registerTriggerHandler(settings.toggleSurfTriggerKey, async:callback(
         function()
-            if settings.main.enableJumpControl then
+            if settings.main.enableJumpControl or (#interfaces.UI.modes ~= 0) then
                 return
             end
 
