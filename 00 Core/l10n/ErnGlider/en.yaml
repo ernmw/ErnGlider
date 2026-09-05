@@ -33,6 +33,8 @@ SurfKeyName: "Toggle Surf Button"
 EnableJumpControlName: "Jump Control"
 EnableJumpControlDescription: "Toggle gliding and surfing when jumping with directional input. Disable to remove toggling with Jump input. You will need to bind Glide and Surf buttons separately."
 
+move360Warning: "Glider won't function correctly since you've enabled the 'Move 360' camera setting."
+
 # CHIM Tricky stuff
 kph: "{value} kph"
 dropToast: "{height}m Drop!"
