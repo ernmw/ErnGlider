@@ -30,8 +30,11 @@ chimTrickyDescription: "Use a custom HUD while surfing."
 
 GlideKeyName: "Toggle Glide Button"
 SurfKeyName: "Toggle Surf Button"
-EnableJumpControlName: "Jump Control"
-EnableJumpControlDescription: "Toggle gliding and surfing when jumping with directional input. Disable to remove toggling with Jump input. You will need to bind Glide and Surf buttons separately."
+
+EnableGlideJumpControlName: "Glide Jump Control"
+EnableGlideJumpControlDescription: "Toggle gliding when jumping with directional input. Disable to remove toggling with Jump input; you will need to bind the Glide button separately."
+EnableSurfJumpControlName: "Surf Jump Control"
+EnableSurfJumpControlDescription: "Toggle surfing when jumping with directional input. Disable to remove toggling with Jump input; you will need to bind the Surf button separately."
 
 move360Warning: "Glider won't function correctly since you've enabled the 'Move 360' camera setting."
 
