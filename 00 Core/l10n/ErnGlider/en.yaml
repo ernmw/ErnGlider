@@ -35,6 +35,7 @@ EnableGlideJumpControlName: "Glide Jump Control"
 EnableGlideJumpControlDescription: "Toggle gliding when jumping with directional input. Disable to remove toggling with Jump input; you will need to bind the Glide button separately."
 EnableSurfJumpControlName: "Surf Jump Control"
 EnableSurfJumpControlDescription: "Toggle surfing when jumping with directional input. Disable to remove toggling with Jump input; you will need to bind the Surf button separately."
+shieldBroke: "{shield} broke!"
 
 move360Warning: "Glider won't function correctly since you've enabled the 'Move 360' camera setting."
 

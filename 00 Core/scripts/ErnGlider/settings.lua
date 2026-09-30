@@ -189,6 +189,13 @@ local function init()
                 }
             },
             {
+                key = "onlyUseEquippedShield",
+                name = "onlyUseEquippedShieldName",
+                description = "onlyUseEquippedShieldDescription",
+                default = true,
+                renderer = "checkbox",
+            },
+            {
                 key = "chimTricky",
                 name = "chimTrickyName",
                 description = "chimTrickyDescription",
