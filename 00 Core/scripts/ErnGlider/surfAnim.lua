@@ -7,7 +7,6 @@
 
 local I         = require('openmw.interfaces')
 local animation = require('openmw.animation')
-local input     = require('openmw.input')
 local self      = require('openmw.self')
 
 local data      = require('scripts.ErnGlider.surfAnim_shared')
@@ -34,8 +33,11 @@ end
 -- ==============================================
 -- STANCE SELECTION
 -- ==============================================
+
+---@param ctx UpdateCtx
+---@return string
 local function selectStance(ctx)
-    if input.isShiftPressed() then
+    if ctx.fastStance then
         return "modifier"
     end
     return "default"
@@ -46,8 +48,8 @@ end
 -- ==============================================
 local active     = false
 local stanceName = "default"
-local poseTime   = 0      
-local airTime    = 0      
+local poseTime   = 0
+local airTime    = 0
 
 
 local slot = { BODY = nil, ONESHOT = nil, ARMS = nil }
@@ -154,12 +156,18 @@ function Anim.start()
     airTime    = 0   -- surf starts mid-jump, so the first landing drops in
 end
 
--- Called once per onUpdate while surfing.
---   ctx.dt         frame time
---   ctx.onGround   types.Actor.isOnGround(pself)
---   ctx.justLanded true on the first grounded frame after being airborne
---   ctx.side       pself.controls.sideMovement (drift, -1..1)
---   ctx.deadzone   settings.main.deadzone
+
+---@class UpdateCtx
+---@field dt number frame time
+---@field onGround boolean types.Actor.isOnGround(pself)
+---@field justLanded boolean true on the first grounded frame after being airborne
+---@field side number pself.controls.sideMovement (drift, -1..1)
+---@field deadzone number settings.main.deadzone
+---@field bigDrop boolean we had a damaging land
+---@field fastStance boolean true if we should be in the "fast crouch" stance
+
+--- Called once per onUpdate while surfing.
+---@param ctx UpdateCtx
 function Anim.update(ctx)
     if not active then return end
     local dt = ctx.dt or 0
@@ -181,12 +189,12 @@ function Anim.update(ctx)
         setSlot("ARMS", stance.airArms)
         return
     end
+    airTime = 0
 
     -- ---- landing -----------------------------------------------------------
-    if ctx.justLanded and airTime >= TUNING.dropinMinAir then
+    if ctx.justLanded and ctx.bigDrop then
         Anim.playDropIn()
     end
-    airTime = 0
 
     -- ---- ground ------------------------------------------------------------
     local side, dz = ctx.side or 0, ctx.deadzone or 0.1

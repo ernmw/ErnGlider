@@ -536,6 +536,7 @@ local function onUpdate(dt)
 
         local justLanded = false
         local justJumped = false
+        local bigDrop = false
         if types.Actor.isOnGround(pself) then
             if not persist.landed then
                 justLanded = true
@@ -579,6 +580,7 @@ local function onUpdate(dt)
                     loop = false,
                 })
                 toastColor = "negative"
+                bigDrop = true
             else
                 settings.debugPrint("Small drop of height " .. tostring(dropHeight))
                 -- play softer landing sound
@@ -616,6 +618,7 @@ local function onUpdate(dt)
             justLanded = justLanded,
             side       = pself.controls.sideMovement,
             deadzone   = settings.main.deadzone,
+            bigDrop = bigDrop,
         })
         -- shield prop: the old animate() re-applied it on grounded frames only
         if persist.landed then
