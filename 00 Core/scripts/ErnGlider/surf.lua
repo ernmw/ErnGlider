@@ -34,7 +34,8 @@ local chimtricky             = require("scripts.ErnGlider.ui.chimtricky")
 local toasts                 = require("scripts.ErnGlider.ui.toasts")
 local settings               = require("scripts.ErnGlider.settings")
 local blur                   = require("scripts.ErnGlider.blurshader")
-local chimgates              = require("scripts.ErnGlider.chimgates")
+local chimgates    = require("scripts.ErnGlider.chimgates")
+local ui = require('openmw.ui')
 
 -- initial momentum when starting surf
 local startMomentum          = 0.2
@@ -140,31 +141,48 @@ local function cancelSurfAnimations()
     if surfAnimations.jump then animation.cancel(pself, surfAnimations.jump) end
 end
 
+local function getBestInventoryShield()
+    local best, bestCondition = nil, 0
+    for _, item in ipairs(types.Actor.inventory(pself):getAll(types.Armor)) do
+        if types.Armor.records[item.recordId].type == types.Armor.TYPE.Shield then
+            local condition = types.Item.itemData(item).condition
+            if condition and condition > bestCondition then
+                best, bestCondition = item, condition
+            end
+        end
+    end
+    return best
+end
+
 local function getShield()
     if persist.activeShield then
         return persist.activeShield
     end
+
+    local shield
     local leftHand = pself.type.getEquipment(pself, types.Actor.EQUIPMENT_SLOT.CarriedLeft)
-    if (not leftHand) or (not types.Armor.objectIsInstance(leftHand)) then
+    if leftHand and types.Armor.objectIsInstance(leftHand)
+        and types.Armor.records[leftHand.recordId].type == types.Armor.TYPE.Shield then
+        shield = leftHand
+    elseif settings.surf.onlyUseEquippedShield ~= true then
+        shield = getBestInventoryShield()
+    end
+
+    if not shield then
         persist.activeShield = nil
         persist.activeShieldRecord = nil
         return nil
     end
 
-    if types.Armor.records[leftHand.recordId].type == types.Armor.TYPE.Shield then
-        persist.activeShield = leftHand
-        local record = types.Armor.records[leftHand.recordId]
-        persist.activeShieldRecord = {
-            weight = record.weight,
-            weightFactor = util.clamp(util.remap(record.weight, 5, 50, 0, 1), 0, 1),
-            model = record.model,
-            health = record.health,
-        }
-        return persist.activeShield
-    end
-    persist.activeShield = nil
-    persist.activeShieldRecord = nil
-    return nil
+    local record = types.Armor.records[shield.recordId]
+    persist.activeShield = shield
+    persist.activeShieldRecord = {
+        weight = record.weight,
+        weightFactor = util.clamp(util.remap(record.weight, 5, 50, 0, 1), 0, 1),
+        model = record.model,
+        health = record.health,
+    }
+    return shield
 end
 
 local function applyVFX()
@@ -237,6 +255,10 @@ local function onSave()
     return persist
 end
 
+local function getRecord(obj)
+    return obj.type.record(obj)
+end
+
 local function canApply()
     if types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing then
         settings.debugPrint("canApply surf: spell or weapon is readied")
@@ -266,12 +288,18 @@ local function canApply()
     end
     if types.Item.itemData(shield).condition <= 0 then
         settings.debugPrint("canApply surf: shield broken")
+        ui.showMessage(localization("shieldBroke", {
+            shield = getRecord(shield).name
+        }))
         return false
     end
+    --[[
+    --- maybe this was for summoned shields?
     if not types.Player.hasEquipped(pself, shield) then
         settings.debugPrint("canApply surf: shield not equipped")
         return false
     end
+    ]]
     if fatigueStat.current <= minFatigue then
         settings.debugPrint("canApply surf: min fatigue")
         return false
@@ -540,6 +568,10 @@ local function onJump()
         return
     end
     persist.points.jumps = persist.points.jumps + 1
+    core.sound.playSoundFile3d(sounds.jump_start, pself, {
+        volume = settings.main.volume,
+        loop = false,
+    })
 end
 
 local function hitGate()
@@ -602,10 +634,6 @@ local function onUpdate(dt)
             persist.startHeightOnCurrentJump = getFootPos().z
             persist.maxHeightOnCurrentJump = persist.startHeightOnCurrentJump
             persist.airTimeDurationOnCurrentJump = 0
-            core.sound.playSoundFile3d(sounds.jump_start, pself, {
-                volume = settings.main.volume,
-                loop = false,
-            })
         end
 
         -- track landing

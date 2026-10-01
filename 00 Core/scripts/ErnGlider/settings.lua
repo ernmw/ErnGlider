@@ -85,13 +85,6 @@ local function init()
                 renderer = "checkbox",
             },
             {
-                key = "enableJumpControl",
-                name = "EnableJumpControlName",
-                description = "EnableJumpControlDescription",
-                default = true,
-                renderer = "checkbox",
-            },
-            {
                 key = "debugMode",
                 name = "debugName",
                 default = false,
@@ -134,6 +127,13 @@ local function init()
                     min = 0,
                     max = 100
                 }
+            },
+            {
+                key = "enableGlideJumpControl",
+                name = "EnableGlideJumpControlName",
+                description = "EnableGlideJumpControlDescription",
+                default = true,
+                renderer = "checkbox",
             },
             {
                 key = "glideKeyBinding",
@@ -189,10 +189,24 @@ local function init()
                 }
             },
             {
+                key = "onlyUseEquippedShield",
+                name = "onlyUseEquippedShieldName",
+                description = "onlyUseEquippedShieldDescription",
+                default = true,
+                renderer = "checkbox",
+            },
+            {
                 key = "chimTricky",
                 name = "chimTrickyName",
                 description = "chimTrickyDescription",
                 default = false,
+                renderer = "checkbox",
+            },
+            {
+                key = "enableSurfJumpControl",
+                name = "EnableSurfJumpControlName",
+                description = "EnableSurfJumpControlDescription",
+                default = true,
                 renderer = "checkbox",
             },
             {
