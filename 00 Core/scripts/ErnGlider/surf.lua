@@ -293,10 +293,13 @@ local function canApply()
         }))
         return false
     end
+    --[[
+    --- maybe this was for summoned shields?
     if not types.Player.hasEquipped(pself, shield) then
         settings.debugPrint("canApply surf: shield not equipped")
         return false
     end
+    ]]
     if fatigueStat.current <= minFatigue then
         settings.debugPrint("canApply surf: min fatigue")
         return false
@@ -565,6 +568,10 @@ local function onJump()
         return
     end
     persist.points.jumps = persist.points.jumps + 1
+    core.sound.playSoundFile3d(sounds.jump_start, pself, {
+        volume = settings.main.volume,
+        loop = false,
+    })
 end
 
 local function hitGate()
@@ -627,10 +634,6 @@ local function onUpdate(dt)
             persist.startHeightOnCurrentJump = getFootPos().z
             persist.maxHeightOnCurrentJump = persist.startHeightOnCurrentJump
             persist.airTimeDurationOnCurrentJump = 0
-            core.sound.playSoundFile3d(sounds.jump_start, pself, {
-                volume = settings.main.volume,
-                loop = false,
-            })
         end
 
         -- track landing
