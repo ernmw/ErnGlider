@@ -76,6 +76,7 @@ local persist                = {
     maxMomentumThisRun = startMomentum,
     momentum = startMomentum,
     driftMomentum = 0,
+    originalForwardInput = 0,
     activeShield = nil,
     activeShieldRecord = {
         instance = nil,
@@ -618,7 +619,8 @@ local function onUpdate(dt)
             justLanded = justLanded,
             side       = pself.controls.sideMovement,
             deadzone   = settings.main.deadzone,
-            bigDrop = bigDrop,
+            bigDrop    = bigDrop,
+            fastStance = persist.originalForwardInput > settings.main.deadzone
         })
         -- shield prop: the old animate() re-applied it on grounded frames only
         if persist.landed then
@@ -777,6 +779,8 @@ local function onFrame(dt)
                     pointsPerAirTimeSecond * dt * persist.momentum * persist.momentum
             end
         end
+
+        persist.originalForwardInput = pself.controls.movement
 
         -- Don't give direct control over strafing.
         -- If the camera swings too much, automatically mix in strafing.
