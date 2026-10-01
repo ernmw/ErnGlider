@@ -34,8 +34,11 @@ local chimtricky             = require("scripts.ErnGlider.ui.chimtricky")
 local toasts                 = require("scripts.ErnGlider.ui.toasts")
 local settings               = require("scripts.ErnGlider.settings")
 local blur                   = require("scripts.ErnGlider.blurshader")
-local chimgates    = require("scripts.ErnGlider.chimgates")
-local ui = require('openmw.ui')
+local chimgates              = require("scripts.ErnGlider.chimgates")
+-- All animation-group control lives here. `animation` above is kept only for
+-- the shield prop (addVfx/removeVfx) and the landing poof.
+local Anim                   = require("scripts.ErnGlider.surfAnim")
+local ui                     = require('openmw.ui')
 
 -- initial momentum when starting surf
 local startMomentum          = 0.2
@@ -120,12 +123,6 @@ local sounds         = {
 }
 
 local shieldBone     = "Bip01 Shieldsurf" --Bip01 Shieldsurf
-local surfAnimations = {
-    forward = "shieldgo",                 --"Shieldgo",
-    left = "sneakleft",
-    right = "sneakright",
-    jump = "sneakforward"
-}
 
 local chimGateSpells = {
     "eg_surf_chim1",
@@ -133,13 +130,6 @@ local chimGateSpells = {
     "eg_surf_chim3",
     "eg_surf_chim4",
 }
-
-local function cancelSurfAnimations()
-    animation.cancel(pself, surfAnimations.forward)
-    if surfAnimations.right then animation.cancel(pself, surfAnimations.right) end
-    if surfAnimations.left then animation.cancel(pself, surfAnimations.left) end
-    if surfAnimations.jump then animation.cancel(pself, surfAnimations.jump) end
-end
 
 local function getBestInventoryShield()
     local best, bestCondition = nil, 0
@@ -233,6 +223,9 @@ local function onInit(initData)
     end
 end
 local function onLoad(data)
+    -- The engine may still hold a looping surf group the fresh module has no
+    -- record of; release them all. Anim.update() replays if we're mid-run.
+    Anim.forceReset()
     if data ~= nil then
         persist = data
     end
@@ -369,15 +362,8 @@ local function removeSurf(wipeout)
         loop = false,
     })
 
-    -- stop surf anims now
-    cancelSurfAnimations()
-
-    -- ending animation
-    interfaces.AnimationController.playBlendedAnimation('jump', {
-        priority = animation.PRIORITY.Jump,
-        blendMask = animation.BLEND_MASK.LowerBody,
-        autoDisable = true,
-    })
+    -- release every surf layer and play the exit jump
+    Anim.stop()
     blurShader:setEnabled(false)
 
     calcPoints(wipeout)
@@ -445,6 +431,8 @@ local function applySurf()
     settings.debugPrint("Spawned " .. tostring(#persist.gatePositions) .. " CHIM gates.")
     spawnCHIMGates()
 
+    Anim.start()
+
     -- todo: unequip then re-equip shield?
     -- maybe just override the shield vfx for sheath mod somehow?
 end
@@ -456,15 +444,7 @@ local function onHit(victimActor)
     })
     settings.debugPrint("hit something")
     removeSurf(true)
-    -- https://github.com/OpenMW/openmw/blob/87b266c1365696ce76fede471dd549f8184f090a/apps/openmw/mwrender/animation.cpp#L814-L828
-    -- https://github.com/OpenMW/openmw/blob/87b266c1365696ce76fede471dd549f8184f090a/apps/openmw/mwmechanics/character.cpp#L219-L245
-
-    local gliderAnim = victimActor and 'hit' .. tostring(math.random(1, 5)) or 'knockdown'
-
-    interfaces.AnimationController.playBlendedAnimation(gliderAnim, {
-        priority = animation.PRIORITY.Knockdown,
-        autoDisable = true,
-    })
+    Anim.playImpact(victimActor)
 
     if victimActor then
         victimActor:sendEvent(MOD_NAME .. 'onHitByGlider', {
@@ -495,69 +475,6 @@ local function slideSound()
         -- ensure off if in air
         core.sound.stopSoundFile3d(sounds.gravel_road, pself)
     end
-end
-
-local armsAnimationOptions = {
-    priority = animation.PRIORITY.Storm,
-    blendMask = util.bitOr(animation.BLEND_MASK.LeftArm, animation.BLEND_MASK.RightArm),
-    --blendMask = animation.BLEND_MASK.UpperBody,
-    loops = -1,
-    speed = 1,
-}
-local fullAnimationOptions = {
-    priority = animation.PRIORITY.Hit,
-    --blendMask = util.bitOr(animation.BLEND_MASK.LeftArm, animation.BLEND_MASK.RightArm),
-    --blendMask = animation.BLEND_MASK.LowerBody,
-    loops = -1,
-    speed = 1,
-}
-local function animate()
-    -- cancel run anims so the footstep sounds stop
-    animation.cancel(pself, "runforward")
-    animation.cancel(pself, "runleft")
-    animation.cancel(pself, "runright")
-
-    if not types.Actor.isOnGround(pself) then
-        if surfAnimations.left then animation.cancel(pself, surfAnimations.left) end
-        if surfAnimations.right then animation.cancel(pself, surfAnimations.right) end
-        if surfAnimations.jump and not animation.isPlaying(pself, surfAnimations.jump) then
-            settings.debugPrint("anim start jump - " .. surfAnimations.jump)
-            animation.playBlended(pself, surfAnimations.jump, armsAnimationOptions)
-        end
-        return
-    end
-
-    local armAnim = animation.getActiveGroup(pself, animation.BONE_GROUP.LeftArm)
-    if surfAnimations.left and (pself.controls.sideMovement <= -1 * settings.main.deadzone) and surfAnimations.left ~= armAnim then
-        animation.cancel(pself, surfAnimations.right)
-        animation.cancel(pself, surfAnimations.jump)
-        if not animation.isPlaying(pself, surfAnimations.left) then
-            settings.debugPrint("anim start left - " .. surfAnimations.left)
-            animation.playBlended(pself, surfAnimations.left, armsAnimationOptions)
-        end
-    elseif surfAnimations.right and (pself.controls.sideMovement >= settings.main.deadzone) and surfAnimations.right ~= armAnim then
-        animation.cancel(pself, surfAnimations.left)
-        animation.cancel(pself, surfAnimations.jump)
-        if not animation.isPlaying(pself, surfAnimations.right) then
-            settings.debugPrint("anim start right - " .. surfAnimations.right)
-            animation.playBlended(pself, surfAnimations.right, armsAnimationOptions)
-        end
-    elseif (math.abs(pself.controls.sideMovement) < settings.main.deadzone) then
-        if surfAnimations.left then animation.cancel(pself, surfAnimations.left) end
-        if surfAnimations.right then animation.cancel(pself, surfAnimations.right) end
-        if surfAnimations.jump then animation.cancel(pself, surfAnimations.jump) end
-    end
-
-    -- always play forward
-    if not animation.isPlaying(pself, surfAnimations.forward) then
-        settings.debugPrint("anim start forward - " .. surfAnimations.forward)
-        --animation.clearAnimationQueue(pself, false)
-        --animation.playQueued(pself, surfAnimations.forward)
-        animation.playBlended(pself,
-            surfAnimations.forward,
-            fullAnimationOptions)
-    end
-    applyVFX()
 end
 
 local function onJump()
@@ -603,9 +520,12 @@ local function onUpdate(dt)
             return
         end
         -- did we hit the ground too hard?
-        if animation.isPlaying(pself, "knockdown") then
+        if Anim.isKnockedDown() then
             settings.debugPrint("fell from too high!")
             removeSurf()
+            -- Was missing: without it the rest of this frame ran with
+            -- activeShieldRecord already nil'd by removeSurf().
+            return
         end
 
         if persist.landed and (persist.momentum <= kickoutMinimumMomentum) then
@@ -616,6 +536,7 @@ local function onUpdate(dt)
 
         local justLanded = false
         local justJumped = false
+        local bigDrop = false
         if types.Actor.isOnGround(pself) then
             if not persist.landed then
                 justLanded = true
@@ -659,6 +580,7 @@ local function onUpdate(dt)
                     loop = false,
                 })
                 toastColor = "negative"
+                bigDrop = true
             else
                 settings.debugPrint("Small drop of height " .. tostring(dropHeight))
                 -- play softer landing sound
@@ -690,7 +612,18 @@ local function onUpdate(dt)
         -- update gravel sound
         slideSound()
         -- handle animations
-        animate()
+        Anim.update({
+            dt         = dt,
+            onGround   = persist.landed,
+            justLanded = justLanded,
+            side       = pself.controls.sideMovement,
+            deadzone   = settings.main.deadzone,
+            bigDrop = bigDrop,
+        })
+        -- shield prop: the old animate() re-applied it on grounded frames only
+        if persist.landed then
+            applyVFX()
+        end
 
         -- roll over foot positions
         persist.lastFootPos = persist.currentFootPos
