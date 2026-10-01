@@ -137,7 +137,7 @@ local function getBestInventoryShield()
     for _, item in ipairs(types.Actor.inventory(pself):getAll(types.Armor)) do
         if types.Armor.records[item.recordId].type == types.Armor.TYPE.Shield then
             local condition = types.Item.itemData(item).condition
-            if condition and condition > bestCondition then
+            if condition and condition > 0 and condition > bestCondition and item:isValid() then
                 best, bestCondition = item, condition
             end
         end
