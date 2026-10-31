@@ -282,7 +282,8 @@ local function removeGlider()
         animation.playBlended(pself, "jump", {
             priority = animation.PRIORITY.Movement,
             autoDisable = true,
-            loops = -1,
+            --- really big, but not infinite.
+            loops = 9000000000000000,
         })
     end
 
