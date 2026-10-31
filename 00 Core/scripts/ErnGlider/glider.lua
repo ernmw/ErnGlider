@@ -143,7 +143,7 @@ local function touchingWall()
     local facing = pself.rotation:apply(forward):normalize() * 70
 
     local castResult = nearby.castRay(pselfCenter, pselfCenter + facing, {
-        collisionType = nearby.COLLISION_TYPE.AnyPhysical,
+        collisionType = nearby.COLLISION_TYPE.AnyPhysical - nearby.COLLISION_TYPE.Water,
         ignore = pself
     })
 
@@ -392,6 +392,20 @@ local function onHit(victimActor)
 end
 
 local rayCastDelay = 0
+
+-- taitechnic's fix to stop animation transition during view change.
+local inFirstPerson
+interfaces.AnimationController.addPlayBlendedAnimationHandler(function()
+    local inFirst = camera.getMode() == camera.MODE.FirstPerson
+    -- check if camera has just been switched into or out of First Person
+    if inFirst ~= inFirstPerson then
+        inFirstPerson = inFirst
+        -- avoid a visible blending transition by playing glider anim before any other anim plays
+        if persist.applied then
+            animate()
+        end
+    end
+end)
 
 local function onUpdate(dt)
     if dt == 0 then return end
