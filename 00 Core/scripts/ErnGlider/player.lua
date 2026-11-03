@@ -58,21 +58,17 @@ input.registerTriggerHandler("Jump", async:callback(
             return
         end
 
-        if not settings.main.enableJumpControl then
-            return
-        end
-
         -- apply special movement
         if animation.isPlaying(pself, "jump") then
             if pself.controls.movement > settings.main.deadzone then
                 -- no forward movement action on purpose.
                 -- people like bunny hopping.
             elseif pself.controls.movement < -1 * settings.main.deadzone then
-                if settings.surf.enable then
+                if settings.surf.enable and settings.surf.enableSurfJumpControl then
                     interfaces.ErnGliderSurf.apply()
                 end
             else
-                if settings.glider.enable then
+                if settings.glider.enable and settings.glider.enableGlideJumpControl then
                     interfaces.ErnGliderGlider.apply()
                 end
             end
